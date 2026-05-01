@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Barista Trainer</title>
+    <style>
+        :root { --paper: #fff; --ink: #111; --accent: #4CAF50; --delete: #ff4444; }
+        body { font-family: 'Courier New', Courier, monospace; background-color: #dcdcdc; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* 설정 섹션 */
+        #settings-bar { background: #333; color: white; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); overflow-y: auto; max-height: 40vh; }
+        .setting-group { display: inline-block; vertical-align: top; margin-right: 20px; margin-bottom: 15px; background: #444; padding: 10px; border-radius: 5px; min-width: 180px; }
+        .setting-group h4 { margin: 0 0 8px 0; color: #ff9800; font-size: 0.9em; border-bottom: 1px solid #555; display: flex; justify-content: space-between; }
+        
+        .item-list { max-height: 120px; overflow-y: auto; margin-bottom: 8px; }
+        .option-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8em; margin-bottom: 3px; background: #555; padding: 2px 5px; border-radius: 3px; }
+        .option-item input[type="checkbox"] { margin-right: 8px; }
+        .btn-del-opt { background: none; border: none; color: #ffbcbc; cursor: pointer; font-size: 0.8em; padding: 0 5px; }
+        .btn-del-opt:hover { color: var(--delete); }
+
+        /* 입력창 스타일 */
+        .add-box { display: flex; gap: 4px; }
+        .add-box input { flex: 1; border: none; padding: 4px; font-size: 0.8em; border-radius: 3px; }
+        .btn-add { background: var(--accent); color: white; border: none; padding: 4px 8px; cursor: pointer; font-size: 0.8em; border-radius: 3px; }
+
+        /* 하단 컨트롤 */
+        .controls { background: #222; padding: 12px; display: flex; justify-content: center; gap: 15px; }
+        .btn-main { padding: 10px 25px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; font-family: inherit; }
+        .btn-gen { background: var(--accent); color: white; font-size: 1.1em; }
+        .btn-clear { background: #555; color: white; }
+        
+        /* 도켓 전시 구역 */
+        #workspace { flex: 1; padding: 25px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 15px; overflow-y: auto; }
+
+        /* 도켓 디자인 */
+        .docket { background: var(--paper); width: 190px; padding: 15px; box-shadow: 5px 5px 15px rgba(0,0,0,0.2); border-bottom: 8px dashed #ccc; animation: dropIn 0.3s ease-out; position: relative; }
+        @keyframes dropIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .docket-num { font-size: 0.75em; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; color: #888; }
+        .item-row { font-size: 1.15em; font-weight: bold; margin: 5px 0; border-left: 4px solid #333; padding-left: 8px; }
+        .opt-row { font-size: 0.9em; color: #555; margin-left: 12px; margin-top: 3px; font-style: italic; }
+        .btn-done { width: 100%; margin-top: 15px; padding: 8px; background: #f9f9f9; border: 1px solid #ddd; cursor: pointer; font-family: inherit; font-weight: bold; }
+        .btn-done:hover { background: var(--delete); color: white; border-color: var(--delete); }
+
+        .no-data { color: #888; text-align: center; width: 100%; margin-top: 40px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div id="settings-bar">
+    <!-- 사이즈 관리 -->
+    <div class="setting-group" id="group-size">
+        <h4>SIZES</h4>
+        <div class="item-list" id="list-size"></div>
+        <div class="add-box"><input type="text" placeholder="추가..."><button class="btn-add" onclick="addItem('size')">+</button></div>
+    </div>
+    
+    <!-- 우유 관리 -->
+    <div class="setting-group" id="group-milk">
+        <h4>MILKS</h4>
+        <div class="item-list" id="list-milk"></div>
+        <div class="add-box"><input type="text" placeholder="추가..."><button class="btn-add" onclick="addItem('milk')">+</button></div>
+    </div>
+
+    <!-- 메뉴 관리 -->
+    <div class="setting-group" id="group-menu">
+        <h4>MENU</h4>
+        <div class="item-list" id="list-menu"></div>
+        <div class="add-box"><input type="text" placeholder="추가..."><button class="btn-add" onclick="addItem('menu')">+</button></div>
+    </div>
+
+    <!-- 옵션 관리 -->
+    <div class="setting-group" id="group-extra">
+        <h4>EXTRAS</h4>
+        <div class="item-list" id="list-extra"></div>
+        <div class="add-box"><input type="text" placeholder="추가..."><button class="btn-add" onclick="addItem('extra')">+</button></div>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn-main btn-clear" onclick="clearWorkspace()">화면 비우기</button>
+    <button class="btn-main btn-gen" onclick="generateOrder()">NEXT ORDER (주문 생성)</button>
+</div>
+
+<div id="workspace">
+    <div class="no-data">주문 생성 버튼을 눌러 연습을 시작하세요!</div>
+</div>
+
+<script>
+    // 초기 데이터 설정
+    const initialData = {
+        size: ["S", "L"],
+        milk: ["Full Cream", "Skinny", "Oat", "Soy", "Almond", "Lactose Free"],
+        menu: ["Latte", "Flat White", "Cappuccino", "Magic", "Piccolo", "Long Black", "Mocha", "Hot Chocolate", "Iced Latte", "Iced Long Black"],
+        extra: ["Extra Hot", "Decaf", "Strong", "1 Sugar", "2 Sugars", "Honey"]
+    };
+
+    let orderCounter = 1;
+
+    // 시스템 초기화
+    function init() {
+        for (const category in initialData) {
+            initialData[category].forEach(item => createOptionElement(category, item));
+        }
+    }
+
+    // 옵션 UI 생성 함수
+    function createOptionElement(category, value) {
+        const list = document.getElementById(`list-${category}`);
+        const div = document.createElement('div');
+        div.className = 'option-item';
+        div.innerHTML = `
+            <label><input type="checkbox" value="${value}" checked> ${value}</label>
+            <button class="btn-del-opt" onclick="this.parentElement.remove()">×</button>
+        `;
+        list.appendChild(div);
+    }
+
+    // 새로운 아이템 추가 기능
+    function addItem(category) {
+        const input = document.querySelector(`#group-${category} input[type="text"]`);
+        const value = input.value.trim();
+        if (value) {
+            createOptionElement(category, value);
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    // 현재 체크된 옵션들 가져오기
+    function getCheckedValues(category) {
+        return Array.from(document.querySelectorAll(`#list-${category} input:checked`)).map(el => el.value);
+    }
+
+    // 도켓 생성 메인 로직
+    function generateOrder() {
+        const sizes = getCheckedValues('size');
+        const drinks = getCheckedValues('menu');
+        const milks = getCheckedValues('milk');
+        const extras = getCheckedValues('extra');
+
+        if (drinks.length === 0) return alert("메뉴를 최소 하나 이상 선택(또는 추가)해주세요!");
+
+        const workspace = document.getElementById('workspace');
+        if (document.querySelector('.no-data')) workspace.innerHTML = '';
+
+        const drink = drinks[Math.floor(Math.random() * drinks.length)];
+        const isIced = drink.toLowerCase().includes('iced');
+        const isBlack = drink.toLowerCase().includes('black');
+        
+        // 사이즈 결정 (Magic/Piccolo 예외)
+        let size = (drink === "Magic" || drink === "Piccolo") ? "" : (sizes.length > 0 ? sizes[Math.floor(Math.random() * sizes.length)] : "");
+        
+        // 우유 결정
+        let milk = (!isBlack && !isIced && milks.length > 0 && Math.random() > 0.2) ? milks[Math.floor(Math.random() * milks.length)] : "";
+        if (isIced && !isBlack) milk = milks.length > 0 ? milks[Math.floor(Math.random() * milks.length)] : "Full Cream";
+
+        // 엑스트라 결정 (0~2개)
+        let selectedExtras = [];
+        if (extras.length > 0) {
+            const count = Math.random() > 0.7 ? 2 : (Math.random() > 0.4 ? 1 : 0);
+            for(let i=0; i<count; i++) {
+                const ex = extras[Math.floor(Math.random() * extras.length)];
+                if(ex === "Extra Hot" && isIced) continue; // 아이스인데 핫 옵션 방지
+                if(!selectedExtras.includes(ex)) selectedExtras.push(ex);
+            }
+        }
+
+        const docket = document.createElement('div');
+        docket.className = 'docket';
+        docket.id = `order-${orderCounter}`;
+
+        docket.innerHTML = `
+            <div class="docket-num"><span>#${String(orderCounter++).padStart(3, '0')}</span> <span>${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span></div>
+            <div class="item-row">${size} ${drink}</div>
+            ${milk ? `<div class="opt-row">- ${milk}</div>` : ''}
+            ${selectedExtras.map(ex => `<div class="opt-row">- ${ex}</div>`).join('')}
+            <button class="btn-done" onclick="removeOrder('${docket.id}')">DONE / DISCARD</button>
+        `;
+
+        workspace.prepend(docket);
+    }
+
+    function removeOrder(id) {
+        const el = document.getElementById(id);
+        el.style.transition = "0.3s";
+        el.style.transform = "scale(0.8) translateY(20px)";
+        el.style.opacity = "0";
+        setTimeout(() => {
+            el.remove();
+            if (document.getElementById('workspace').children.length === 0) {
+                document.getElementById('workspace').innerHTML = '<div class="no-data">모든 주문 처리 완료!</div>';
+            }
+        }, 300);
+    }
+
+    function clearWorkspace() {
+        document.getElementById('workspace').innerHTML = '<div class="no-data">화면이 비워졌습니다.</div>';
+        orderCounter = 1;
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
